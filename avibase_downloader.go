@@ -1,9 +1,13 @@
 package avibase_downloader
 
 import (
+	"encoding/xml"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -15,21 +19,50 @@ type AvibaseDownloaderInput struct {
 }
 
 type AvibaseDownloaderOutput struct {
-	Entries     []AvibaseEntry
-	Attribution attributions.Attribution
+	Entries     []AvibaseEntry           `xml:"entries"`
+	Attribution attributions.Attribution `xml:"attribution"`
 }
 
 type AvibaseEntry struct {
-	EnglishName string
-	LatinName   string
-	Url         string
+	EnglishName string `xml:"english-name"`
+	LatinName   string `xml:"latin-name"`
+	URL         string `xml:"URL"`
 }
 
 const rootUrl = "http://avibase.bsc-eoc.org/"
 const checklistUrl = rootUrl + "checklist.jsp"
 
-func (input AvibaseDownloaderInput) Execute() (AvibaseDownloaderOutput, error) {
-	output := AvibaseDownloaderOutput{}
+func (input *AvibaseDownloaderInput) memoizedFileName() string {
+	return "/tmp/avibase_downloader/" + input.RegionCode + ".xml"
+}
+
+func (input *AvibaseDownloaderInput) readMemoized() (*AvibaseDownloaderOutput, error) {
+	output := &AvibaseDownloaderOutput{}
+	asBytes, err := ioutil.ReadFile(input.memoizedFileName())
+	if err != nil {
+		return output, err
+	}
+	err = xml.Unmarshal(asBytes, output)
+	return output, err
+}
+
+func (input *AvibaseDownloaderInput) writeMemoized(output *AvibaseDownloaderOutput) error {
+	err := os.MkdirAll(filepath.Dir(input.memoizedFileName()), 0777)
+	if err != nil {
+		return err
+	}
+	asBytes, err := xml.MarshalIndent(*output, "", "  ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(input.memoizedFileName(), asBytes, 0777)
+}
+
+func (input *AvibaseDownloaderInput) Execute() (*AvibaseDownloaderOutput, error) {
+	output, err := input.readMemoized()
+	if err == nil {
+		return output, err
+	}
 	req, err := http.NewRequest("GET", checklistUrl, nil)
 	if err != nil {
 		return output, err
@@ -58,7 +91,7 @@ func (input AvibaseDownloaderInput) Execute() (AvibaseDownloaderOutput, error) {
 				} else if j == 1 {
 					entry.LatinName = ss.Find("i").Text()
 					partialUrl, _ := ss.Find("a").Attr("href")
-					entry.Url = rootUrl + partialUrl
+					entry.URL = rootUrl + partialUrl
 				}
 			})
 			output.Entries = append(output.Entries, entry)
@@ -72,6 +105,10 @@ func (input AvibaseDownloaderInput) Execute() (AvibaseDownloaderOutput, error) {
 		AuthorUrl:           rootUrl,
 		ScrapingMethodology: "github.com/gbdubs/avibase_downloader",
 		Context:             []string{"Scraped the Avibase Website to list the set of birds that can be found in a given region."},
+	}
+	err = input.writeMemoized(output)
+	if err != nil {
+		return output, err
 	}
 	return output, nil
 }

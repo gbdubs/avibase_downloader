@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	input := avibase_downloader.AvibaseDownloaderInput{
+	input := &avibase_downloader.AvibaseDownloaderInput{
 		RegionCode: "USfl",
 	}
 	output, err := input.Execute()
