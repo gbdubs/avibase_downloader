@@ -14,11 +14,11 @@ import (
 	"github.com/gbdubs/attributions"
 )
 
-type AvibaseDownloaderInput struct {
+type Input struct {
 	RegionCode string
 }
 
-type AvibaseDownloaderOutput struct {
+type Output struct {
 	Entries     []AvibaseEntry           `xml:"entries"`
 	Attribution attributions.Attribution `xml:"attribution"`
 }
@@ -32,12 +32,12 @@ type AvibaseEntry struct {
 const rootUrl = "http://avibase.bsc-eoc.org/"
 const checklistUrl = rootUrl + "checklist.jsp"
 
-func (input *AvibaseDownloaderInput) memoizedFileName() string {
+func (input *Input) memoizedFileName() string {
 	return "/tmp/avibase_downloader/" + input.RegionCode + ".xml"
 }
 
-func (input *AvibaseDownloaderInput) readMemoized() (*AvibaseDownloaderOutput, error) {
-	output := &AvibaseDownloaderOutput{}
+func (input *Input) readMemoized() (*Output, error) {
+	output := &Output{}
 	asBytes, err := ioutil.ReadFile(input.memoizedFileName())
 	if err != nil {
 		return output, err
@@ -46,7 +46,7 @@ func (input *AvibaseDownloaderInput) readMemoized() (*AvibaseDownloaderOutput, e
 	return output, err
 }
 
-func (input *AvibaseDownloaderInput) writeMemoized(output *AvibaseDownloaderOutput) error {
+func (input *Input) writeMemoized(output *Output) error {
 	err := os.MkdirAll(filepath.Dir(input.memoizedFileName()), 0777)
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func (input *AvibaseDownloaderInput) writeMemoized(output *AvibaseDownloaderOutp
 	return ioutil.WriteFile(input.memoizedFileName(), asBytes, 0777)
 }
 
-func (input *AvibaseDownloaderInput) Execute() (*AvibaseDownloaderOutput, error) {
+func (input *Input) Execute() (*Output, error) {
 	output, err := input.readMemoized()
 	if err == nil {
 		return output, err
