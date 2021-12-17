@@ -1,4 +1,4 @@
-module github.com/gbdubs/avibase_downloader
+module github.com/gbdubs/bird_region_rosters
 
 go 1.13
 
