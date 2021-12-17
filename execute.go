@@ -3,12 +3,20 @@ package avibase_downloader
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/gbdubs/amass"
 	"github.com/gbdubs/attributions"
 )
+
+type avibaseEntry struct {
+	EnglishName string
+	LatinName   string
+	AvibaseId   string
+}
 
 const rootUrl = "http://avibase.bsc-eoc.org/"
 const checklistUrl = rootUrl + "checklist.jsp"
@@ -21,15 +29,31 @@ func (input *Input) Execute() (output *Output, err error) {
 			return
 		}
 	}
+	avibaseEntries := make([]avibaseEntry, 0)
 	for _, regionCode := range input.RegionCodes {
 		e, a, er := executeForRegion(regionCode, input.IncludeRare)
 		if er != nil {
 			err = er
 			return
 		}
-		output.Entries = append(output.Entries, e...)
+		avibaseEntries = append(avibaseEntries, e...)
 		output.Attributions = append(output.Attributions, a)
 	}
+	synonymRequests := make([]*amass.GetRequest, 0)
+	for _, avibaseEntry := range avibaseEntries {
+		synonymRequests = append(synonymRequests, avibaseEntry.getSynonymsRequests()...)
+	}
+	amasser := amass.Amasser{
+		TotalMaxConcurrentRequests: 10,
+		Verbose:                    false,
+		AllowedErrorProportion:     .01,
+	}
+	synonymResponses, err := amasser.GetAll(synonymRequests)
+	if err != nil {
+		return output, fmt.Errorf("Error during synonym lookup: %v", err)
+	}
+	output.Entries = processGetResponses(synonymResponses)
+
 	err = input.writeMemoized(output)
 	if err != nil {
 		err = fmt.Errorf("memoization failed: %v", err)
@@ -37,7 +61,8 @@ func (input *Input) Execute() (output *Output, err error) {
 	return
 }
 
-func executeForRegion(regionCode string, includeRare bool) (entries []AvibaseEntry, attribution attributions.Attribution, err error) {
+// TODO move this over to amasser as well.
+func executeForRegion(regionCode string, includeRare bool) (entries []avibaseEntry, attribution attributions.Attribution, err error) {
 	req, err := http.NewRequest("GET", checklistUrl, nil)
 	if err != nil {
 		return
@@ -61,7 +86,7 @@ func executeForRegion(regionCode string, includeRare bool) (entries []AvibaseEnt
 	}
 	doc.Find("tr").Each(func(i int, s *goquery.Selection) {
 		if s.Find("td").Length() == 3 {
-			entry := AvibaseEntry{}
+			entry := avibaseEntry{}
 			isRare := false
 			s.Find("td").Each(func(j int, ss *goquery.Selection) {
 				if j == 0 {
@@ -69,7 +94,7 @@ func executeForRegion(regionCode string, includeRare bool) (entries []AvibaseEnt
 				} else if j == 1 {
 					entry.LatinName = ss.Find("i").Text()
 					partialUrl, _ := ss.Find("a").Attr("href")
-					entry.URL = rootUrl + partialUrl
+					entry.AvibaseId = regexp.MustCompile("avibaseid=([0-9A-F]+)").FindStringSubmatch(partialUrl)[1]
 				} else if j == 2 {
 					if strings.Contains(ss.Text(), "Rare") {
 						isRare = true
