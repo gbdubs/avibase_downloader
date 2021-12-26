@@ -6,7 +6,8 @@ import (
 	"os"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/gbdubs/avibase_downloader"
+	"github.com/gbdubs/bird_region_rosters"
+	"github.com/gbdubs/verbose"
 	"github.com/urfave/cli/v2"
 )
 
@@ -41,10 +42,11 @@ func main() {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			input := &avibase_downloader.Input{
+			input := &bird_region_rosters.Input{
 				RegionCodes: c.StringSlice(flag_region_code),
 				IncludeRare: c.Bool(flag_include_rare),
 				ForceReload: c.Bool(flag_force_reload),
+				Verbose:     verbose.NewOrEmpty(c.Bool(flag_verbose)),
 			}
 			if len(input.RegionCodes) == 0 {
 				return errors.New("one or more region_code must be provided")

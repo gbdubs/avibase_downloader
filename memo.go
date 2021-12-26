@@ -1,4 +1,4 @@
-package avibase_downloader
+package bird_region_rosters
 
 import (
 	"encoding/xml"

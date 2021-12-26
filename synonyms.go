@@ -1,4 +1,4 @@
-package avibase_downloader
+package bird_region_rosters
 
 import (
 	"encoding/xml"
@@ -75,7 +75,7 @@ func processGetResponses(resps []*amass.GetResponse) []bird.BirdName {
 			doc.Find("tr").Each(func(i int, s *goquery.Selection) {
 				synonym := s.Find("td").Eq(1).Text()
 				synType := s.Find("td").Eq(2).Text()
-				if shouldRecordSynonymType(synType) && synonym != bn.Latin {
+				if shouldRecordSynonymType(synType) {
 					bn.AddLatinSynonym(synonym)
 				}
 			})
@@ -110,21 +110,8 @@ func shouldRecordSynonymType(t string) bool {
 }
 
 func shouldRecordEnglishSynonym(n *bird.BirdName, e string) bool {
-	if strings.EqualFold(n.English, e) {
-		return false
-	}
 	if strings.Contains(e, ":") {
 		return false
-	}
-	for _, es := range n.InformalSynonyms {
-		if strings.EqualFold(es, e) {
-			return false
-		}
-	}
-	for _, ls := range n.LatinSynonyms {
-		if strings.EqualFold(ls, e) {
-			return false
-		}
 	}
 	return true
 }

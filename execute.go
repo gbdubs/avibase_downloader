@@ -1,4 +1,4 @@
-package avibase_downloader
+package bird_region_rosters
 
 import (
 	"fmt"
@@ -45,7 +45,7 @@ func (input *Input) Execute() (output *Output, err error) {
 	}
 	amasser := amass.Amasser{
 		TotalMaxConcurrentRequests: 10,
-		Verbose:                    false,
+		Verbose:                    input.VIndent(),
 		AllowedErrorProportion:     .01,
 	}
 	synonymResponses, err := amasser.GetAll(synonymRequests)
