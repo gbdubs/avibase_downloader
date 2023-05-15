@@ -22,10 +22,12 @@ const rootUrl = "http://avibase.bsc-eoc.org/"
 const checklistUrl = rootUrl + "checklist.jsp"
 
 func (input *Input) Execute() (output *Output, err error) {
+	input.VLog("Starting avibase downloader...\n")
 	output = &Output{}
 	if !input.ForceReload {
 		output, err = input.readMemoized()
 		if err == nil {
+			input.VLog("Found Memoized - returning.\n")
 			return
 		}
 	}
@@ -39,6 +41,7 @@ func (input *Input) Execute() (output *Output, err error) {
 		avibaseEntries = append(avibaseEntries, e...)
 		output.Attributions = append(output.Attributions, a)
 	}
+	input.VLog("Found %d avibase entries. Now looking for synonyms...\n", len(avibaseEntries))
 	synonymRequests := make([]*amass.GetRequest, 0)
 	for _, avibaseEntry := range avibaseEntries {
 		synonymRequests = append(synonymRequests, avibaseEntry.getSynonymsRequests()...)
@@ -58,6 +61,7 @@ func (input *Input) Execute() (output *Output, err error) {
 	if err != nil {
 		err = fmt.Errorf("memoization failed: %v", err)
 	}
+	input.VLog("Avibase downloader done.\n")
 	return
 }
 
